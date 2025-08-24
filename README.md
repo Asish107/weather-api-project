@@ -1,79 +1,56 @@
-Weather Data Engineering Project
+# Weather Data Engineering Project
 
-Overview
+## Overview
 This project is a complete data engineering pipeline built as a solution to the Corteva Data Engineering coding exercise. The goal was to process raw weather data files, store them in a database, perform analysis, and expose the data via a RESTful API. This solution accomplishes all requirements, resulting in a well-structured, tested, and documented application.
 
-My Approach & Design Decisions
+---
+
+## My Approach & Design Decisions
 This project was built with a focus on creating a maintainable, robust, and professional-grade application. Here are the key design decisions I made:
 
-Technology Stack: I chose a modern Python stack for this project:
+### Technology Stack
+I chose a modern Python stack for this project:
 
-FastAPI: Selected for its high performance, asynchronous capabilities, and, most importantly, its automatic generation of OpenAPI (Swagger UI) documentation, which was a core requirement.
+- **FastAPI**: Selected for its high performance, asynchronous capabilities, and, most importantly, its automatic generation of OpenAPI (Swagger UI) documentation, which was a core requirement.
+- **SQLAlchemy**: Used as the ORM to interact with the database in a Pythonic way, providing a clear and maintainable way to define the schema and interact with data.
+- **Pydantic**: Integrated with FastAPI, Pydantic was used to define strict data schemas for API responses, ensuring data consistency and powering the detailed documentation.
+- **Pytest**: Chosen as the testing framework for its simplicity and power, allowing for clear and effective unit tests of the API endpoints.
 
-SQLAlchemy: Used as the ORM to interact with the database in a Pythonic way, providing a clear and maintainable way to define the schema and interact with data.
+### Project Structure
+I organized the project into a modular app package with a separate tests directory. This separates concerns, making the codebase cleaner and easier to navigate and maintain compared to a flat structure. Configuration was centralized in `app/config.py` to avoid hardcoding values in multiple places.
 
-Pydantic: Integrated with FastAPI, Pydantic was used to define strict data schemas for API responses, ensuring data consistency and powering the detailed documentation.
+### Data Ingestion (`ingest.py`)
+The ingestion script was designed to be both efficient and idempotent.
 
-Pytest: Chosen as the testing framework for its simplicity and power, allowing for clear and effective unit tests of the API endpoints.
+- **Efficiency**: Instead of committing one record at a time, data from each file is read into a list and inserted using SQLAlchemy's `bulk_save_objects` method. This significantly reduces the number of database transactions.
+- **Idempotency**: The script can be run multiple times without creating duplicate data. This is achieved by leveraging the `UniqueConstraint` on the database table and catching the `IntegrityError`, which allows the script to gracefully skip files that have already been processed.
 
-Project Structure: I organized the project into a modular app package with a separate tests directory. This separates concerns, making the codebase cleaner and easier to navigate and maintain compared to a flat structure. Configuration was centralized in app/config.py to avoid hardcoding values in multiple places.
+### Data Analysis (`stats.py`)
+For performance, the statistical calculations are offloaded directly to the database engine. A single, comprehensive SQL query is used to calculate the yearly averages and totals for all stations at once. The results are inserted or updated using an `INSERT ... ON CONFLICT` (upsert) command, ensuring this script is also idempotent.
 
-Data Ingestion (ingest.py): The ingestion script was designed to be both efficient and idempotent.
+### API Design (`api.py`)
+The API uses FastAPI's dependency injection system (`Depends(get_db)`) to manage database sessions, ensuring that each request gets its own session that is properly closed afterward. This is a robust pattern for handling database connections in a web application. The endpoints for filtering and pagination are implemented by dynamically building SQLAlchemy queries based on optional function parameters.
 
-Efficiency: Instead of committing one record at a time, data from each file is read into a list and inserted using SQLAlchemy's bulk_save_objects method. This significantly reduces the number of database transactions.
+---
 
-Idempotency: The script can be run multiple times without creating duplicate data. This is achieved by leveraging the UniqueConstraint on the database table and catching the IntegrityError, which allows the script to gracefully skip files that have already been processed.
-
-Data Analysis (stats.py): For performance, the statistical calculations are offloaded directly to the database engine. A single, comprehensive SQL query is used to calculate the yearly averages and totals for all stations at once. The results are inserted or updated using an INSERT ... ON CONFLICT (upsert) command, ensuring this script is also idempotent.
-
-API Design (api.py): The API uses FastAPI's dependency injection system (Depends(get_db)) to manage database sessions, ensuring that each request gets its own session that is properly closed afterward. This is a robust pattern for handling database connections in a web application. The endpoints for filtering and pagination are implemented by dynamically building SQLAlchemy queries based on optional function parameters.
-
-Features & Functionality
+## Features & Functionality
 The final application is fully functional and meets all specified requirements.
 
-Interactive API Documentation
+### Interactive API Documentation
 The API includes automatically generated documentation, allowing for easy exploration and testing of the endpoints directly in the browser.
-
-A preview of the interactive API documentation.
 
 ![Main API Documentation Page](images/api_docs_main.png)
 
-Live API Endpoints
+### Live API Endpoints
 The API serves both raw and analyzed data, with support for filtering and pagination.
 
-An example query and successful JSON response for the /api/weather endpoint.
+An example query and successful JSON response for the `/api/weather` endpoint:
 
 ![Example API Response for Daily Records](images/api_response_daily.png)
 
-
-An example query and successful JSON response for the /api/weather/stats endpoint.
+An example query and successful JSON response for the `/api/weather/stats` endpoint:
 
 ![Example API Response for Statistics](images/api_response_stats.png)
----
-
-## Project Structure
-
-
-weather_api/
-├── app/                  # Main application source code
-│   ├── __init__.py
-│   ├── api.py            # FastAPI endpoints
-│   ├── config.py         # Centralized configuration
-│   ├── db.py             # Database session management
-│   ├── ingest.py         # Data ingestion script
-│   ├── models.py         # SQLAlchemy ORM models
-│   ├── schemas.py        # Pydantic schemas for API
-│   └── stats.py          # Data analysis script
-├── images/               # Screenshots for documentation
-├── tests/                # Unit tests
-│   └── test_api.py
-├── venv/                 # Python virtual environment
-├── wx_data/              # Raw weather data files
-├── README.md             # This file
-├── requirements.txt      # Project dependencies
-├── pytest.ini            # Pytest configuration
-└── weather.db            # SQLite database file
-
 
 ---
 
